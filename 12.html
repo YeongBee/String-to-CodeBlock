@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>코드 변환기 (완전판 - 테마 미리보기 포함)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link id="theme-link" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f4f9; max-width: 1200px; margin: 0 auto; color: #333; }
+        
+        /* 컨트롤 패널 */
+        .controls { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: #666; }
+        select, input { padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; outline: none; height: 42px; box-sizing: border-box; }
+        button { padding: 0 25px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; height: 42px; font-size: 14px; }
+        #btn-convert { background: #007bff; }
+        #btn-copy { background: #28a745; }
+        
+        /* 메인 컨테이너 */
+        .container { display: flex; gap: 20px; height: 500px; margin-bottom: 40px; }
+        .box { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .box-header { padding: 12px 15px; background: #f8f9fa; font-weight: bold; color: #555; border-bottom: 1px solid #eee; }
+        textarea { width: 100%; height: 100%; border: none; padding: 15px; resize: none; font-family: 'Consolas', monospace; font-size: 13px; outline: none; box-sizing: border-box; }
+        
+        #hidden-area { position: absolute; top: -9999px; visibility: hidden; }
+
+        /* 테마 미리보기 섹션 */
+        .theme-preview-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .theme-preview-section h3 { margin-top: 0; color: #444; margin-bottom: 20px; }
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        
+        .theme-card {
+            border: 1px solid #eee; border-radius: 8px; overflow: hidden; cursor: pointer; 
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .theme-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .theme-visual { height: 80px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 12px; font-weight: bold; }
+        .theme-name { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background: #f9f9f9; color: #555; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">Code Block Generator (Final Complete)</h1>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>언어</label>
+            <select id="lang-select">
+                <option value="java">Java</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="sql">SQL</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="bash">Bash</option>
+                <option value="yaml">YAML</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>테마</label>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="vs2015">VS 2015 (Dark)</option>
+                <option value="github">GitHub (Light)</option>
+                <option value="monokai">Monokai (Dark)</option>
+                <option value="atom-one-dark">Atom One Dark</option>
+                <option value="dracula">Dracula</option>
+                <option value="default">Default</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>제목</label>
+            <input type="text" id="title-input" placeholder="예: app.py">
+        </div>
+        <div class="control-group">
+            <label>폰트 (px)</label>
+            <input type="number" id="font-size-input" value="14" min="10" max="30">
+        </div>
+        <button id="btn-convert" onclick="convertCode()">변환하기</button>
+        <button id="btn-copy" onclick="copyResult()">결과 복사</button>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <div class="box-header">1. 소스 코드 입력</div>
+            <textarea id="input-code" placeholder="코드를 붙여넣으세요..."></textarea>
+        </div>
+        <div class="box">
+            <div class="box-header">2. 변환된 HTML 결과</div>
+            <textarea id="output-html" readonly placeholder="변환 버튼을 누르면 생성됩니다."></textarea>
+        </div>
+    </div>
+
+    <div class="theme-preview-section">
+        <h3>🎨 테마 미리보기 (클릭하여 선택)</h3>
+        <div class="theme-grid">
+            
+            <div class="theme-card" onclick="selectTheme('vs2015')">
+                <div class="theme-visual" style="background: #1e1e1e; color: #dcdcdc;">
+                    <span style="color: #569cd6">public</span>&nbsp;void
+                </div>
+                <div class="theme-name">VS 2015</div>
+            </div>
+
+            <div class="theme-card" onclick="selectTheme('github')">
+                <div class="theme-visual" style="background: #ffffff; color: #24292e; border-bottom: 1px solid #ddd;">
+                    <span style="color: #d73a49">import</span>&nbsp;sys
+                </div>
+                <div class="theme-name">GitHub (Light)</div>
+            </div>
+
+            <div class="theme-card" onclick="selectTheme('monokai')">
+                <div class="theme-visual" style="background: #272822; color: #f8f8f2;">
+                    <span style="color: #f92672">def</span>&nbsp;func()
+                </div>
+                <div class="theme-name">Monokai</div>
+            </div>
+
+            <div class="theme-card" onclick="selectTheme('atom-one-dark')">
+                <div class="theme-visual" style="background: #282c34; color: #abb2bf;">
+                    <span style="color: #c678dd">const</span>&nbsp;val
+                </div>
+                <div class="theme-name">Atom One Dark</div>
+            </div>
+
+            <div class="theme-card" onclick="selectTheme('dracula')">
+                <div class="theme-visual" style="background: #282a36; color: #f8f8f2;">
+                    <span style="color: #ff79c6">class</span>&nbsp;Main
+                </div>
+                <div class="theme-name">Dracula</div>
+            </div>
+
+            <div class="theme-card" onclick="selectTheme('default')">
+                <div class="theme-visual" style="background: #f0f0f0; color: #444;">
+                    <span style="font-weight: bold; color: #333;">var</span>&nbsp;x = 1;
+                </div>
+                <div class="theme-name">Default</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="hidden-area">
+        <pre><code id="temp-code"></code></pre>
+    </div>
+
+    <script>
+        function changeTheme() {
+            const theme = document.getElementById('theme-select').value;
+            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
+        }
+        
+        function selectTheme(themeName) {
+            document.getElementById('theme-select').value = themeName;
+            changeTheme();
+            // 부드럽게 상단으로 스크롤
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function convertCode() {
+            const input = document.getElementById('input-code').value;
+            if (!input.trim()) { alert("코드를 입력해주세요."); return; }
+
+            const lang = document.getElementById('lang-select').value;
+            const title = document.getElementById('title-input').value.trim();
+            const fontSize = document.getElementById('font-size-input').value;
+            const tempCode = document.getElementById('temp-code');
+            const hiddenArea = document.getElementById('hidden-area');
+
+            // 1. 하이라이팅
+            tempCode.textContent = input;
+            tempCode.className = `language-${lang}`;
+            tempCode.removeAttribute('data-highlighted');
+            hljs.highlightElement(tempCode);
+
+            // 2. 스타일 추출 및 색상 보정
+            const codeStyle = window.getComputedStyle(tempCode);
+            let bgColor = codeStyle.backgroundColor;
+            let textColor = codeStyle.color;
+
+            if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent' || (lang === 'json' && bgColor === 'rgb(0, 0, 0)')) {
+                bgColor = '#1e1e1e';
+            }
+            
+            const rgb = textColor.match(/\d+/g);
+            if (rgb) {
+                const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+                if (brightness < 50 && bgColor === '#1e1e1e') textColor = '#d4d4d4';
+            }
+
+            tempCode.querySelectorAll('span').forEach(span => {
+                const style = window.getComputedStyle(span);
+                let color = style.color;
+                
+                if (lang === 'json') {
+                    if (span.classList.contains('hljs-attr')) color = '#9cdcfe';
+                    else if (span.classList.contains('hljs-string')) color = '#ce9178';
+                    else if (span.classList.contains('hljs-number')) color = '#b5cea8';
+                    else if (span.classList.contains('hljs-literal')) color = '#569cd6';
+                }
+                
+                span.style.color = color;
+                span.style.fontWeight = style.fontWeight;
+                span.removeAttribute('class');
+            });
+
+            // 3. 줄 생성 (Table Rows)
+            const lines = tempCode.innerHTML.split(/\r\n|\r|\n/);
+            let rowsHtml = '';
+            if (lines[lines.length - 1] === '') lines.pop();
+
+            lines.forEach((lineContent, index) => {
+                if (lineContent.trim() === '') lineContent = ' ';
+                
+                rowsHtml += `
+                <tr style="vertical-align: top; border: none !important; background: none !important;">
+                    <td style="
+                        user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+                        text-align: right;
+                        padding: 0 10px 0 0 !important;
+                        border: none !important;
+                        border-right: 1px solid rgba(128, 128, 128, 0.3) !important;
+                        background: none !important;
+                        color: rgba(255, 255, 255, 0.4);
+                        white-space: nowrap !important;
+                        vertical-align: top;
+                        width: 30px;
+                    ">${index + 1}</td>
+                    <td style="
+                        padding-left: 10px !important;
+                        border: none !important;
+                        background: none !important;
+                        white-space: pre !important;
+                        vertical-align: top;
+                        overflow-wrap: normal !important;
+                        word-break: keep-all !important;
+                        font-family: 'Consolas', 'Courier New', monospace !important;
+                    ">${lineContent}</td>
+                </tr>`;
+            });
+
+            // 4. 제목 헤더
+            let headerHtml = '';
+            if (title) {
+                const titleSize = Math.max(12, fontSize - 1);
+                headerHtml = `<div style="background-color: rgba(255, 255, 255, 0.05); padding: 8px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-family: sans-serif; font-size: ${titleSize}px; font-weight: bold; color: ${textColor}; opacity: 0.9;">${title}</div>`;
+            }
+
+            // 5. 최종 HTML
+            const finalHtml = `<!-- 코드 블록 시작 -->
+<div style="background-color: ${bgColor}; color: ${textColor}; border-radius: 8px; overflow: hidden; margin: 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: Consolas, 'Courier New', monospace; font-size: ${fontSize}px; line-height: 1.5;">
+${headerHtml}
+<div style="overflow-x: auto; padding: 12px 15px;">
+    <table style="border-collapse: collapse !important; border: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: none !important; table-layout: auto !important;">
+        <tbody style="border: none !important; margin: 0 !important; padding: 0 !important; background: none !important;">
+            ${rowsHtml}
+        </tbody>
+    </table>
+</div>
+</div>
+<!-- 코드 블록 끝 -->`;
+
+            document.getElementById('output-html').value = finalHtml.trim();
+        }
+
+        function copyResult() {
+            const outputText = document.getElementById('output-html');
+            if (!outputText.value) { alert("먼저 [변환하기]를 진행해주세요."); return; }
+            outputText.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(outputText.value).then(() => alert('HTML 복사 완료!')).catch(err => alert('복사 실패: ' + err));
+            } else {
+                document.execCommand('copy');
+                alert('HTML 복사 완료!');
+            }
+        }
+        
+        window.onload = function() {
+            document.getElementById('input-code').value = 'public class FinalCode {\n    public static void main(String[] args) {\n        System.out.println("Enjoy your coding!");\n    }\n}';
+        }
+    </script>
+</body>
+</html>
