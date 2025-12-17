@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>코드 변환기 (Table Layout - 정렬 완벽 해결)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link id="theme-link" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f4f9; max-width: 1200px; margin: 0 auto; color: #333; }
+        
+        .controls { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: #666; }
+        select, input { padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; outline: none; height: 42px; box-sizing: border-box; }
+        button { padding: 0 25px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; height: 42px; font-size: 14px; }
+        #btn-convert { background: #007bff; }
+        #btn-copy { background: #28a745; }
+        
+        .container { display: flex; gap: 20px; height: 500px; margin-bottom: 40px; }
+        .box { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .box-header { padding: 12px 15px; background: #f8f9fa; font-weight: bold; color: #555; border-bottom: 1px solid #eee; }
+        textarea { width: 100%; height: 100%; border: none; padding: 15px; resize: none; font-family: 'Consolas', monospace; font-size: 13px; outline: none; box-sizing: border-box; }
+        
+        #hidden-area { position: absolute; top: -9999px; visibility: hidden; }
+
+        .theme-preview-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .theme-card { border: 1px solid #eee; border-radius: 8px; overflow: hidden; cursor: pointer; text-align: center; padding: 10px; font-size: 14px; font-weight: bold; color: #555; background: #f9f9f9; }
+        .theme-card:hover { background: #eef; border-color: #aaf; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">Code Block Generator (Table Layout)</h1>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>언어</label>
+            <select id="lang-select">
+                <option value="java">Java</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="sql">SQL</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="bash">Bash</option>
+                <option value="yaml">YAML</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>테마</label>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="vs2015">VS 2015 (Dark)</option>
+                <option value="github">GitHub (Light)</option>
+                <option value="monokai">Monokai (Dark)</option>
+                <option value="atom-one-dark">Atom One Dark</option>
+                <option value="dracula">Dracula</option>
+                <option value="default">Default</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>제목</label>
+            <input type="text" id="title-input" placeholder="예: config.json">
+        </div>
+        <div class="control-group">
+            <label>폰트 (px)</label>
+            <input type="number" id="font-size-input" value="14" min="10" max="30">
+        </div>
+        <button id="btn-convert" onclick="convertCode()">변환하기</button>
+        <button id="btn-copy" onclick="copyResult()">결과 복사</button>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <div class="box-header">1. 소스 코드 입력</div>
+            <textarea id="input-code" placeholder="코드를 붙여넣으세요..."></textarea>
+        </div>
+        <div class="box">
+            <div class="box-header">2. 변환된 HTML 결과</div>
+            <textarea id="output-html" readonly placeholder="변환 버튼을 누르면 생성됩니다."></textarea>
+        </div>
+    </div>
+
+    <div class="theme-preview-section">
+        <h3>🎨 테마 빠른 선택</h3>
+        <div class="theme-grid">
+            <div class="theme-card" onclick="selectTheme('vs2015')">VS 2015 (Dark)</div>
+            <div class="theme-card" onclick="selectTheme('github')">GitHub (Light)</div>
+            <div class="theme-card" onclick="selectTheme('monokai')">Monokai (Dark)</div>
+            <div class="theme-card" onclick="selectTheme('atom-one-dark')">Atom One Dark</div>
+            <div class="theme-card" onclick="selectTheme('dracula')">Dracula</div>
+            <div class="theme-card" onclick="selectTheme('default')">Default</div>
+        </div>
+    </div>
+
+    <div id="hidden-area">
+        <pre><code id="temp-code"></code></pre>
+    </div>
+
+    <script>
+        function changeTheme() {
+            const theme = document.getElementById('theme-select').value;
+            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
+        }
+        
+        function selectTheme(themeName) {
+            document.getElementById('theme-select').value = themeName;
+            changeTheme();
+        }
+
+        function convertCode() {
+            const input = document.getElementById('input-code').value;
+            if (!input.trim()) { alert("코드를 입력해주세요."); return; }
+
+            const lang = document.getElementById('lang-select').value;
+            const title = document.getElementById('title-input').value.trim();
+            const fontSize = document.getElementById('font-size-input').value;
+            const tempCode = document.getElementById('temp-code');
+            const hiddenArea = document.getElementById('hidden-area');
+
+            // 1. 하이라이팅 실행
+            tempCode.textContent = input;
+            tempCode.className = `language-${lang}`;
+            tempCode.removeAttribute('data-highlighted');
+            hljs.highlightElement(tempCode);
+
+            // 2. 스타일 추출 & JSON 색상 보정
+            const codeStyle = window.getComputedStyle(tempCode);
+            let bgColor = codeStyle.backgroundColor;
+            let textColor = codeStyle.color;
+
+            // [보정] 배경이 투명/검정이면 다크 그레이로 변경
+            if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent' || (lang === 'json' && bgColor === 'rgb(0, 0, 0)')) {
+                bgColor = '#1e1e1e';
+            }
+            // [보정] 글자색이 너무 어두우면 밝게 변경
+            const rgb = textColor.match(/\d+/g);
+            if (rgb) {
+                const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+                if (brightness < 50 && bgColor === '#1e1e1e') textColor = '#d4d4d4';
+            }
+
+            // [보정] Span 태그 스타일 강제 적용
+            tempCode.querySelectorAll('span').forEach(span => {
+                const style = window.getComputedStyle(span);
+                let color = style.color;
+                
+                // JSON 전용 컬러 팔레트 (VS Code 스타일)
+                if (lang === 'json') {
+                    if (span.classList.contains('hljs-attr')) color = '#9cdcfe';      // Key (Light Blue)
+                    else if (span.classList.contains('hljs-string')) color = '#ce9178'; // Value (Apricot)
+                    else if (span.classList.contains('hljs-number')) color = '#b5cea8'; // Number (Green)
+                    else if (span.classList.contains('hljs-literal')) color = '#569cd6'; // Boolean (Blue)
+                }
+                
+                span.style.color = color;
+                span.style.fontWeight = style.fontWeight;
+                span.removeAttribute('class'); // 클래스 제거 (CSS 의존성 제거)
+            });
+
+            // 3. 줄 단위로 분리하여 Table Row 생성
+            // [핵심] 줄 번호와 코드를 하나의 <tr>에 담아서 높이를 강제로 일치시킴
+            const lines = tempCode.innerHTML.split(/\r\n|\r|\n/);
+            let rowsHtml = '';
+            
+            // 마지막 빈 줄 제거
+            if (lines[lines.length - 1] === '') lines.pop();
+
+            lines.forEach((lineContent, index) => {
+                // 빈 줄이라도 높이를 갖도록 공백 문자 추가
+                if (lineContent.trim() === '') lineContent = ' ';
+                
+                rowsHtml += `
+                <tr style="vertical-align: top;">
+                    <td style="
+                        user-select: none; -webkit-user-select: none;
+                        text-align: right;
+                        padding: 0 10px 0 0;
+                        border-right: 1px solid rgba(128, 128, 128, 0.3);
+                        color: rgba(255, 255, 255, 0.4);
+                        white-space: nowrap;
+                        vertical-align: top;
+                    ">${index + 1}</td>
+                    <td style="
+                        padding-left: 10px;
+                        white-space: pre;
+                        vertical-align: top;
+                        overflow-wrap: normal;
+                    ">${lineContent}</td>
+                </tr>`;
+            });
+
+            // 4. 제목 헤더
+            let headerHtml = '';
+            if (title) {
+                const titleSize = Math.max(12, fontSize - 1);
+                headerHtml = `<div style="background-color: rgba(255, 255, 255, 0.05); padding: 8px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-family: sans-serif; font-size: ${titleSize}px; font-weight: bold; color: ${textColor}; opacity: 0.9;">${title}</div>`;
+            }
+
+            // 5. 최종 HTML 조립 (Table 태그 사용)
+            const finalHtml = `<!-- 코드 블록 시작 -->
+<div style="background-color: ${bgColor}; color: ${textColor}; border-radius: 8px; overflow: hidden; margin: 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: Consolas, 'Courier New', monospace; font-size: ${fontSize}px; line-height: 1.5;">
+${headerHtml}
+<div style="overflow-x: auto; padding: 12px 15px;">
+    <table style="border-collapse: collapse; border: none; width: 100%; margin: 0; padding: 0;">
+        <tbody style="border: none; margin: 0; padding: 0;">
+            ${rowsHtml}
+        </tbody>
+    </table>
+</div>
+</div>
+<!-- 코드 블록 끝 -->`;
+
+            document.getElementById('output-html').value = finalHtml.trim();
+        }
+
+        function copyResult() {
+            const outputText = document.getElementById('output-html');
+            if (!outputText.value) { alert("먼저 [변환하기]를 진행해주세요."); return; }
+            outputText.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(outputText.value).then(() => alert('HTML 복사 완료!')).catch(err => alert('복사 실패: ' + err));
+            } else {
+                document.execCommand('copy');
+                alert('HTML 복사 완료!');
+            }
+        }
+        
+        window.onload = function() {
+            document.getElementById('lang-select').value = 'json';
+            document.getElementById('input-code').value = '{\n    "problem": "line-height mismatch",\n    "solution": "use table layout",\n    "isFixed": true,\n    "lines": [\n        "Line 1 OK",\n        "Line 2 OK",\n        "Line 3 OK"\n    ]\n}';
+        }
+    </script>
+</body>
+</html>
