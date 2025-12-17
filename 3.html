@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>코드 HTML 변환기 (복사 기능 포함)</title>
+    <!-- 테마 스타일시트 (ID 부여하여 동적 교체) -->
+    <link id="theme-link" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    <style>
+        /* 레이아웃 스타일 */
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 1400px; margin: 0 auto; background-color: #f4f4f9; color: #333; }
+        h1 { text-align: center; margin-bottom: 20px; color: #2c3e50; }
+        
+        /* 컨트롤 패널 */
+        .controls { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; font-size: 14px; }
+        .btn-primary { background-color: #007bff; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+
+        /* 메인 컨테이너 (3단 구조: 입력 -> 미리보기 -> HTML결과) */
+        .main-container { display: flex; gap: 20px; height: 700px; }
+        
+        .column { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .column-header { background: #e9ecef; padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 텍스트 영역 공통 */
+        textarea { width: 100%; height: 100%; border: none; padding: 15px; resize: none; font-family: 'Consolas', monospace; font-size: 13px; box-sizing: border-box; outline: none; }
+        
+        /* 미리보기 영역 */
+        #preview-area { flex: 1; overflow: auto; background-color: #1e1e1e; position: relative; margin: 0; }
+        pre { margin: 0; min-height: 100%; }
+        code { font-family: 'Consolas', monospace; padding: 15px !important; display: block; min-height: 100%; box-sizing: border-box; }
+
+        /* 결과 HTML 코드 영역 */
+        #html-output { background-color: #f8f9fa; color: #555; }
+    </style>
+</head>
+<body>
+
+    <h1>Code Block Generator & HTML Converter</h1>
+
+    <!-- 1. 컨트롤 패널 -->
+    <div class="controls">
+        <div>
+            <label>언어: </label>
+            <select id="language-select" onchange="runConvert()">
+                <option value="java">Java</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="sql">SQL</option>
+                <option value="html">HTML/XML</option>
+                <option value="css">CSS</option>
+                <option value="bash">Bash</option>
+                <option value="cpp">C++</option>
+                <option value="yaml">YAML</option>
+            </select>
+        </div>
+        <div>
+            <label>테마: </label>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="vs2015">VS 2015 (Dark)</option>
+                <option value="vs">Visual Studio (Light)</option>
+                <option value="github">GitHub (Light)</option>
+                <option value="github-dark">GitHub (Dark)</option>
+                <option value="monokai">Monokai</option>
+                <option value="dracula">Dracula</option>
+                <option value="a11y-dark">A11y Dark</option>
+                <option value="agate">Agate</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="runConvert()">변환 실행 (Convert)</button>
+    </div>
+
+    <!-- 2. 메인 영역 -->
+    <div class="main-container">
+        
+        <!-- 왼쪽: 소스 코드 입력 -->
+        <div class="column">
+            <div class="column-header">1. 소스 코드 입력 (Input)</div>
+            <textarea id="input-code" placeholder="여기에 원본 코드를 붙여넣으세요..."></textarea>
+        </div>
+
+        <!-- 중앙: 미리보기 -->
+        <div class="column">
+            <div class="column-header">2. 미리보기 (Preview)</div>
+            <div id="preview-area">
+                <pre><code id="preview-code" class="language-java"></code></pre>
+            </div>
+        </div>
+
+        <!-- 오른쪽: HTML 결과 -->
+        <div class="column">
+            <div class="column-header">
+                3. HTML 결과 (Result)
+                <button class="btn btn-success" onclick="copyHtml()">HTML 복사</button>
+            </div>
+            <textarea id="html-output" readonly placeholder="변환 버튼을 누르면 여기에 HTML 코드가 생성됩니다."></textarea>
+        </div>
+
+    </div>
+
+    <!-- 스크립트 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        // 변환 실행 메인 함수
+        function runConvert() {
+            const inputVal = document.getElementById('input-code').value;
+            const langVal = document.getElementById('language-select').value;
+            const previewCodeBlock = document.getElementById('preview-code');
+            
+            // 1. 미리보기 영역에 텍스트 주입
+            previewCodeBlock.textContent = inputVal;
+            
+            // 2. 클래스 초기화 및 언어 설정
+            previewCodeBlock.removeAttribute('data-highlighted');
+            previewCodeBlock.className = `language-${langVal}`; // hljs 클래스는 highlightElement가 자동 추가함
+
+            // 3. Highlight.js 실행 (HTML 태그 생성)
+            hljs.highlightElement(previewCodeBlock);
+
+            // 4. 생성된 HTML 추출하여 결과창에 표시
+            // <pre> 태그 전체를 가져오기 위해 부모 요소를 참조하지 않고 직접 구조 생성
+            // highlight.js가 적용된 후의 code 태그 내부 HTML을 가져옴
+            const highlightedContent = previewCodeBlock.innerHTML;
+            const resultHtml = `<pre><code class="language-${langVal} hljs">\n${highlightedContent}\n</code></pre>`;
+            
+            document.getElementById('html-output').value = resultHtml;
+        }
+
+        // 테마 변경 함수
+        function changeTheme() {
+            const theme = document.getElementById('theme-select').value;
+            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
+        }
+
+        // HTML 복사 함수
+        function copyHtml() {
+            const outputText = document.getElementById('html-output');
+            
+            if (!outputText.value) {
+                alert("변환된 코드가 없습니다. 먼저 '변환 실행'을 눌러주세요.");
+                return;
+            }
+
+            outputText.select();
+            
+            // 최신 클립보드 API 사용 (실패 시 execCommand 사용)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(outputText.value)
+                    .then(() => alert('HTML 코드가 클립보드에 복사되었습니다!'))
+                    .catch(err => alert('복사 실패: ' + err));
+            } else {
+                document.execCommand('copy');
+                alert('HTML 코드가 클립보드에 복사되었습니다! (구형 방식)');
+            }
+        }
+
+        // 초기 실행
+        window.onload = function() {
+            document.getElementById('input-code').value = 'public class Hello {\n    public static void main(String[] args) {\n        System.out.println("Copy This Code!");\n    }\n}';
+            runConvert();
+        };
+    </script>
+</body>
+</html>
