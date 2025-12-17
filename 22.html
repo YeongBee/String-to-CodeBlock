@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Perfect Code Generator (Final V4)</title>
+    <title>Perfect Code Generator (No Scrollbar)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <link id="theme-link" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
     
@@ -20,6 +20,8 @@
         .container { display: flex; gap: 20px; height: 500px; margin-bottom: 40px; }
         .box { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .box-header { padding: 12px 15px; background: #f8f9fa; font-weight: bold; color: #555; border-bottom: 1px solid #eee; }
+        
+        /* 입력창 리사이즈 핸들 제거 */
         textarea { width: 100%; height: 100%; border: none; padding: 15px; resize: none; font-family: 'Consolas', monospace; font-size: 13px; outline: none; box-sizing: border-box; }
         
         #hidden-area { position: absolute; top: -9999px; visibility: hidden; }
@@ -39,7 +41,6 @@
         }
         .theme-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: #007bff; }
         
-        /* 실제 테마 색상을 반영한 미리보기 박스 */
         .theme-code-preview {
             padding: 12px; font-family: 'Consolas', monospace; font-size: 12px;
             height: 50px; display: flex; align-items: center; pointer-events: none;
@@ -53,7 +54,7 @@
 </head>
 <body>
 
-    <h1 style="text-align: center;">Clean Code Generator (Fixed V4)</h1>
+    <h1 style="text-align: center;">Clean Code Generator (Final V6)</h1>
     
     <div class="controls">
         <div class="control-group">
@@ -112,55 +113,42 @@
     <div class="theme-preview-section">
         <h3>🎨 테마 빠른 선택 (Hello World Preview)</h3>
         <div class="theme-grid">
-            
-            <!-- VS 2015: Bg #1e1e1e / Print(white-ish) / String(Orange-brown) -->
             <div class="theme-card" onclick="selectTheme('vs2015')">
                 <div class="theme-code-preview" style="background: #1e1e1e; color: #dcdcdc;">
                     <span>print(<span style="color: #d69d85;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">VS 2015</div>
             </div>
-
-            <!-- GitHub: Bg White / Print(Purple/Blue) / String(Dark Blue/Red) -->
             <div class="theme-card" onclick="selectTheme('github')">
                 <div class="theme-code-preview" style="background: #ffffff; color: #24292e;">
                     <span>print(<span style="color: #032f62;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">GitHub</div>
             </div>
-
-            <!-- Monokai: Bg #272822 / Print(Cyan) / String(Yellow) -->
             <div class="theme-card" onclick="selectTheme('monokai')">
                 <div class="theme-code-preview" style="background: #272822; color: #f8f8f2;">
                     <span><span style="color: #66d9ef;">print</span>(<span style="color: #e6db74;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">Monokai</div>
             </div>
-
-            <!-- Atom One Dark: Bg #282c34 / Print(Blue) / String(Green) -->
             <div class="theme-card" onclick="selectTheme('atom-one-dark')">
                 <div class="theme-code-preview" style="background: #282c34; color: #abb2bf;">
                     <span><span style="color: #61aeee;">print</span>(<span style="color: #98c379;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">Atom One Dark</div>
             </div>
-
-            <!-- Dracula: Bg #282a36 / Print(Cyan) / String(Yellow) -->
             <div class="theme-card" onclick="selectTheme('dracula')">
                 <div class="theme-code-preview" style="background: #282a36; color: #f8f8f2;">
                     <span><span style="color: #8be9fd;">print</span>(<span style="color: #f1fa8c;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">Dracula</div>
             </div>
-
-            <!-- Default: Bg #f3f3f3 / Print(Black) / String(Red-ish) -->
             <div class="theme-card" onclick="selectTheme('default')">
                 <div class="theme-code-preview" style="background: #f3f3f3; color: #444;">
                     <span>print(<span style="color: #880000;">"Hello World"</span>)</span>
                 </div>
                 <div class="theme-name">Default</div>
             </div>
-
         </div>
     </div>
 
@@ -183,12 +171,8 @@
 
         function convertCode() {
             const input = document.getElementById('input-code').value;
-            
-            // [1] 줄 밀림 완벽 해결
-            // 맨 앞의 "줄바꿈(\n)"만 제거하고 "공백(스페이스)"은 유지합니다.
-            // 이렇게 하면 들여쓰기 된 코드는 유지되지만, 불필요한 빈 줄은 사라집니다.
-            let cleanInput = input.replace(/^(?:\r\n|\r|\n)+/, '').replace(/(?:\r\n|\r|\n)+$/, '');
-
+            // 줄 밀림 방지 로직
+            let cleanInput = input.replace(/^\s*[\r\n]+/, '').replace(/\s+$/, '');
             if (!cleanInput) { alert("코드를 입력해주세요."); return; }
 
             const lang = document.getElementById('lang-select').value;
@@ -208,7 +192,6 @@
             let bgColor = codeStyle.backgroundColor;
             let textColor = codeStyle.color;
 
-            // Dracula/투명 배경 보정
             if (theme === 'dracula') {
                 bgColor = '#282a36';
             } else if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
@@ -221,7 +204,6 @@
                 }
             }
             
-            // 밝은 테마 감지 (라인 번호 색상용)
             let isDarkBg = true;
             if (bgColor.startsWith('rgb')) {
                 const rgbValues = bgColor.match(/\d+/g);
@@ -233,11 +215,9 @@
                 isDarkBg = false;
             }
 
-            // 라인 번호 색상: 밝은 배경이면 검은색 투명, 어두운 배경이면 흰색 투명
             const lineNumberColor = isDarkBg ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.3)';
             const separatorColor = isDarkBg ? 'rgba(128, 128, 128, 0.3)' : 'rgba(0, 0, 0, 0.15)';
 
-            // Dracula JSON 등 특정 색상 보정
             tempCode.querySelectorAll('span').forEach(span => {
                 const style = window.getComputedStyle(span);
                 let color = style.color;
@@ -253,15 +233,8 @@
 
             // 3. 줄 분리
             let lines = tempCode.innerHTML.split(/\r\n|\r|\n/);
-            
-            // [중요] 배열 첫 요소가 비어있으면 제거 (split으로 생기는 빈 줄 처리)
-            // .replace(/&nbsp;/g, '').trim() === '' : 공백 문자만 있는 줄도 빈 줄로 간주
-            if (lines.length > 0 && lines[0].replace(/&nbsp;/g, '').trim() === '') {
-                lines.shift();
-            }
-            if (lines.length > 0 && lines[lines.length - 1].replace(/&nbsp;/g, '').trim() === '') {
-                lines.pop();
-            }
+            while (lines.length > 0 && lines[0].replace(/&nbsp;/g, '').trim() === '') lines.shift();
+            while (lines.length > 0 && lines[lines.length - 1].replace(/&nbsp;/g, '').trim() === '') lines.pop();
 
             let lineNumbersHtml = '';
             let codeHtml = '';
@@ -284,15 +257,15 @@
                 headerHtml = `<div contenteditable="true" style="background-color: ${headerBg}; padding: 8px 15px; border-bottom: 1px solid ${headerBorder}; font-family: sans-serif; font-size: ${titleSize}px; font-weight: bold; color: ${textColor}; opacity: 0.9; outline: none;">${title}</div>`;
             }
 
-            // 5. 최종 HTML
+            // 5. 최종 HTML 수정 (overflow-y: hidden 추가)
             const finalHtml = `<!-- 코드 블록 시작 -->
 <div style="background-color: ${bgColor}; color: ${textColor}; border-radius: 8px; overflow: hidden; margin: 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: Consolas, 'Courier New', monospace; font-size: ${fontSize}px;">
 ${headerHtml}
-<div style="display: flex; flex-direction: row; padding: 12px 0;">
+<div style="display: flex; flex-direction: row; padding: 12px 0; overflow-y: hidden;">
 <div style="user-select: none; -webkit-user-select: none; text-align: right; padding: 0 10px 0 15px; margin-right: 10px; border-right: 1px solid ${separatorColor}; color: ${lineNumberColor}; min-width: 30px; font-family: inherit; pointer-events: none;">
 ${lineNumbersHtml}
 </div>
-<div contenteditable="true" style="flex: 1; overflow-x: auto; padding-right: 12px; font-family: inherit; white-space: pre; outline: none;">
+<div contenteditable="true" style="flex: 1; overflow-x: auto; padding-right: 12px; font-family: inherit; white-space: pre; outline: none; overflow-y: hidden;">
 ${codeHtml}
 </div>
 </div>
