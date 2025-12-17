@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Code Generator (Dracula & Monokai Fixed)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link id="theme-link" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f4f9; max-width: 1200px; margin: 0 auto; color: #333; }
+        
+        .controls { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: #666; }
+        select, input { padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; outline: none; height: 42px; box-sizing: border-box; }
+        button { padding: 0 25px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; height: 42px; font-size: 14px; }
+        #btn-convert { background: #007bff; }
+        #btn-copy { background: #28a745; }
+
+        .container { display: flex; gap: 20px; height: 500px; margin-bottom: 40px; }
+        .box { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .box-header { padding: 12px 15px; background: #f8f9fa; font-weight: bold; color: #555; border-bottom: 1px solid #eee; }
+        
+        textarea { width: 100%; height: 100%; border: none; padding: 15px; resize: none; font-family: 'Consolas', monospace; font-size: 13px; outline: none; box-sizing: border-box; }
+        
+        #hidden-area { position: absolute; top: -9999px; visibility: hidden; }
+        
+        #live-preview-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border: 2px dashed #007bff; min-height: 100px; }
+        #live-preview-section h3 { margin-top: 0; color: #007bff; margin-bottom: 15px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .theme-preview-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        
+        .theme-card { 
+            border: 1px solid #eee; border-radius: 8px; overflow: hidden; cursor: pointer; 
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: left; background: #fff;
+        }
+        .theme-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: #007bff; }
+        
+        .theme-code-preview {
+            padding: 12px; font-family: 'Consolas', monospace; font-size: 12px;
+            height: 50px; display: flex; align-items: center; pointer-events: none;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .theme-name { 
+            padding: 8px 10px; background: #fff; 
+            font-size: 13px; font-weight: bold; color: #555; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">Code Generator (Color Fixed)</h1>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>언어</label>
+            <select id="lang-select">
+                <option value="java">Java</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="sql">SQL</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="bash">Bash</option>
+                <option value="yaml">YAML</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>테마 선택</label>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="vs2015">VS 2015 (Dark)</option>
+                <option value="github">GitHub (Light)</option>
+                <option value="monokai">Monokai (Dark)</option>
+                <option value="atom-one-dark">Atom One Dark</option>
+                <option value="dracula">Dracula</option>
+                <option value="default">Default (Light)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>제목</label>
+            <input type="text" id="title-input" placeholder="예: main.py">
+        </div>
+        <div class="control-group">
+            <label>폰트 (px)</label>
+            <input type="number" id="font-size-input" value="14" min="10" max="30">
+        </div>
+        <button id="btn-convert" onclick="convertCode()">변환하기</button>
+        <button id="btn-copy" onclick="copyResult()">결과 복사</button>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <div class="box-header">1. 소스 코드 입력</div>
+            <textarea id="input-code" placeholder="코드를 붙여넣으세요..."></textarea>
+        </div>
+        <div class="box">
+            <div class="box-header">2. 변환된 HTML 결과</div>
+            <textarea id="output-html" readonly placeholder="변환 버튼을 누르면 생성됩니다."></textarea>
+        </div>
+    </div>
+
+    <div id="live-preview-section">
+        <h3>👁️ 변환 결과 미리보기</h3>
+        <div id="preview-content"><p style="color: #999;">변환을 누르면 여기에 나타납니다.</p></div>
+    </div>
+
+    <div class="theme-preview-section">
+        <h3>🎨 테마 빠른 선택 (Hello World Preview)</h3>
+        <div class="theme-grid">
+            <div class="theme-card" onclick="selectTheme('vs2015')">
+                <div class="theme-code-preview" style="background: #1e1e1e; color: #dcdcdc;">
+                    <span>print(<span style="color: #d69d85;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">VS 2015</div>
+            </div>
+            <div class="theme-card" onclick="selectTheme('github')">
+                <div class="theme-code-preview" style="background: #ffffff; color: #24292e;">
+                    <span>print(<span style="color: #032f62;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">GitHub</div>
+            </div>
+            <!-- Monokai: String 보정됨 (#e6db74) -->
+            <div class="theme-card" onclick="selectTheme('monokai')">
+                <div class="theme-code-preview" style="background: #272822; color: #f8f8f2;">
+                    <span><span style="color: #a6e22e;">print</span>(<span style="color: #e6db74;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">Monokai</div>
+            </div>
+            <div class="theme-card" onclick="selectTheme('atom-one-dark')">
+                <div class="theme-code-preview" style="background: #282c34; color: #abb2bf;">
+                    <span><span style="color: #61aeee;">print</span>(<span style="color: #98c379;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">Atom One Dark</div>
+            </div>
+            <!-- Dracula: String 보정됨 (#f1fa8c) -->
+            <div class="theme-card" onclick="selectTheme('dracula')">
+                <div class="theme-code-preview" style="background: #282a36; color: #f8f8f2;">
+                    <span><span style="color: #50fa7b;">print</span>(<span style="color: #f1fa8c;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">Dracula</div>
+            </div>
+            <div class="theme-card" onclick="selectTheme('default')">
+                <div class="theme-code-preview" style="background: #f3f3f3; color: #444;">
+                    <span>print(<span style="color: #880000;">"Hello World"</span>)</span>
+                </div>
+                <div class="theme-name">Default</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hidden-area">
+        <pre><code id="temp-code"></code></pre>
+    </div>
+
+    <script>
+        function changeTheme() {
+            const theme = document.getElementById('theme-select').value;
+            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
+        }
+        
+        function selectTheme(themeName) {
+            document.getElementById('theme-select').value = themeName;
+            changeTheme();
+            setTimeout(convertCode, 200);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function convertCode() {
+            const input = document.getElementById('input-code').value;
+            let cleanInput = input.replace(/^\s*[\r\n]+/, '').replace(/\s+$/, '');
+            if (!cleanInput) { alert("코드를 입력해주세요."); return; }
+
+            const lang = document.getElementById('lang-select').value;
+            const theme = document.getElementById('theme-select').value;
+            const title = document.getElementById('title-input').value.trim();
+            const fontSize = parseInt(document.getElementById('font-size-input').value);
+            const tempCode = document.getElementById('temp-code');
+
+            // 1. 하이라이팅
+            tempCode.textContent = cleanInput;
+            tempCode.className = `language-${lang}`;
+            tempCode.removeAttribute('data-highlighted');
+            hljs.highlightElement(tempCode);
+
+            // 2. 색상 추출 및 배경 감지
+            const codeStyle = window.getComputedStyle(tempCode);
+            let bgColor = codeStyle.backgroundColor;
+            let textColor = codeStyle.color;
+
+            // 투명 배경일 때만 안전장치
+            if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+                const rgb = textColor.match(/\d+/g);
+                if (rgb) {
+                    const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+                    bgColor = (brightness < 128) ? '#ffffff' : '#1e1e1e';
+                } else {
+                    bgColor = '#1e1e1e';
+                }
+            }
+            
+            // Dracula는 배경색을 조금 더 명확하게 (#282a36)
+            if (theme === 'dracula') {
+                bgColor = '#282a36';
+                textColor = '#f8f8f2';
+            }
+
+            let isDarkBg = true;
+            if (bgColor.startsWith('rgb')) {
+                const rgbValues = bgColor.match(/\d+/g);
+                if (rgbValues) {
+                    const brightness = (parseInt(rgbValues[0]) * 299 + parseInt(rgbValues[1]) * 587 + parseInt(rgbValues[2]) * 114) / 1000;
+                    isDarkBg = brightness < 128; 
+                }
+            } else if (bgColor === '#ffffff' || bgColor === '#f3f3f3') {
+                isDarkBg = false;
+            }
+
+            const lineNumberColor = isDarkBg ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.3)';
+            const separatorColor = isDarkBg ? 'rgba(128, 128, 128, 0.3)' : 'rgba(0, 0, 0, 0.15)';
+
+            tempCode.querySelectorAll('span').forEach(span => {
+                const style = window.getComputedStyle(span);
+                let color = style.color;
+                
+                // [Monokai 보정]
+                if (theme === 'monokai') {
+                     if (span.classList.contains('hljs-string')) color = '#e6db74'; 
+                }
+                
+                // [Dracula 보정]
+                if (theme === 'dracula') {
+                    if (span.classList.contains('hljs-string')) {
+                        color = '#f1fa8c'; // Yellow
+                    } else if (span.classList.contains('hljs-function') || span.classList.contains('hljs-title')) {
+                        color = '#50fa7b'; // Green
+                    } else if (span.classList.contains('hljs-keyword') || span.classList.contains('hljs-tag')) {
+                        color = '#ff79c6'; // Pink
+                    } else if (span.classList.contains('hljs-comment')) {
+                        color = '#6272a4'; // Blue Gray
+                    } else if (span.classList.contains('hljs-attr')) {
+                        color = '#50fa7b'; // Green (Attribute)
+                    } else if (span.classList.contains('hljs-number') || span.classList.contains('hljs-literal')) {
+                        color = '#bd93f9'; // Purple
+                    } else if (span.classList.contains('hljs-symbol') || span.classList.contains('hljs-bullet')) {
+                        color = '#f1fa8c'; // Yellow
+                    }
+                }
+                
+                span.style.color = color;
+                span.style.fontWeight = style.fontWeight;
+                span.removeAttribute('class');
+            });
+
+            // 3. 줄 분리
+            let lines = tempCode.innerHTML.split(/\r\n|\r|\n/);
+            while (lines.length > 0 && lines[0].replace(/&nbsp;/g, '').trim() === '') lines.shift();
+            while (lines.length > 0 && lines[lines.length - 1].replace(/&nbsp;/g, '').trim() === '') lines.pop();
+
+            let lineNumbersHtml = '';
+            let codeHtml = '';
+            const lineHeight = Math.round(fontSize * 1.5); 
+
+            lines.forEach((lineContent, index) => {
+                if (lineContent.length === 0) lineContent = ' ';
+                let processedLine = lineContent.replace(/  /g, '&nbsp;&nbsp;');
+                
+                lineNumbersHtml += `<div style="height: ${lineHeight}px; line-height: ${lineHeight}px;">${index + 1}</div>`;
+                codeHtml += `<div style="height: ${lineHeight}px; line-height: ${lineHeight}px; white-space: pre; outline: none;">${processedLine}</div>`;
+            });
+
+            // 4. 헤더
+            let headerHtml = '';
+            if (title) {
+                const titleSize = Math.max(12, fontSize - 1);
+                const headerBg = isDarkBg ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+                const headerBorder = isDarkBg ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                headerHtml = `<div contenteditable="true" style="background-color: ${headerBg}; padding: 8px 15px; border-bottom: 1px solid ${headerBorder}; font-family: sans-serif; font-size: ${titleSize}px; font-weight: bold; color: ${textColor}; opacity: 0.9; outline: none;">${title}</div>`;
+            }
+
+            // 5. 최종 HTML
+            const finalHtml = `<!-- 코드 블록 시작 -->
+<div style="background-color: ${bgColor}; color: ${textColor}; border-radius: 8px; overflow: hidden; margin: 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: Consolas, 'Courier New', monospace; font-size: ${fontSize}px;">
+${headerHtml}
+<div style="display: flex; flex-direction: row; padding: 12px 0; overflow-y: hidden !important;">
+<div style="user-select: none; -webkit-user-select: none; text-align: right; padding: 0 10px 0 15px; margin-right: 10px; border-right: 1px solid ${separatorColor}; color: ${lineNumberColor}; min-width: 30px; font-family: inherit; pointer-events: none;">${lineNumbersHtml}</div>
+<div contenteditable="true" style="flex: 1; overflow-x: auto; overflow-y: hidden !important; padding-right: 12px; font-family: inherit; white-space: pre; outline: none; height: auto !important; max-height: none !important;">${codeHtml}</div>
+</div>
+</div>
+<!-- 코드 블록 끝 -->`;
+
+            document.getElementById('output-html').value = finalHtml.trim();
+            document.getElementById('preview-content').innerHTML = finalHtml;
+        }
+
+        function copyResult() {
+            const outputText = document.getElementById('output-html');
+            if (!outputText.value) { alert("먼저 [변환하기]를 진행해주세요."); return; }
+            outputText.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(outputText.value).then(() => alert('HTML 복사 완료!')).catch(err => alert('복사 실패: ' + err));
+            } else {
+                document.execCommand('copy');
+                alert('HTML 복사 완료!');
+            }
+        }
+        
+        window.onload = function() {
+            document.getElementById('lang-select').value = 'python';
+            document.getElementById('input-code').value = 'print("Hello World!")';
+            setTimeout(convertCode, 500);
+        }
+    </script>
+</body>
+</html>
